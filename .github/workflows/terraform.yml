@@ -1,0 +1,42 @@
+name: "Terraform Automation"
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+  id-token: write  # Required for Workload Identity Federation
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: environments/1-dev
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to GCP
+        uses: 'google-github-actions/auth@v2'
+        with:
+          # REPLACE '123456789012' with your actual 12-digit Project Number
+          workload_identity_provider: 'projects/1010669729583/locations/global/workloadIdentityPools/ct-github-gcp-tf-pool/providers/ct-github-gcp-tf-provider'
+          service_account: 'ct-gcp-dh-sa@ct-gcp-hc-deephealth-dev.iam.gserviceaccount.com'
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Plan
+        run: terraform plan
+
+      - name: Terraform Apply
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: terraform apply -auto-approve
